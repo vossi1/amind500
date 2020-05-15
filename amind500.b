@@ -26,18 +26,8 @@ ZPDIFF					= -$0100
 !zone zeropage
 *= $0040
 		!word $0002						; +1 = $0003 code start in bank 15
-		!word $df00						; TPI2
-		!word $0400
-		!word $0500
-		!word $0600
-		!word $0700
 
 zp_ptr					= $40			; pointer to $0002
-TPI2					= $42
-screen0					= $44
-screen1					= $46
-screen2					= $48
-screen3					= $4a
 
 clock					= $13
 mel_lfsr				= $14
@@ -64,19 +54,6 @@ codecpy:lda $0102,y
 		sta (zp_ptr),y
 		dey
 		bne codecpy
-
-		lda #$20						; clears screen in bank 15
-clrscr:	sta (screen0),y
-		sta (screen1),y
-		sta (screen2),y
-		sta (screen3),y
-		dey
-		bne clrscr
-
-		ldy #$02
-		lda (TPI2),y					; load TPI2 port c
-		and #$3f						; clear bit#6,7 vic 16k select bank $0000-$3fff
-		sta (TPI2),y					; store to TPI2 port c
 
 		jmp switch
 ; switch routine		
@@ -157,7 +134,7 @@ bassoff:
 		lda clock
 		asr #$0e							; ILLEGAL opcode A = (A & imm) /2
 		tax
-		sbx #256-4		; **********		; ILLEGAL opcode X = (A & X) - imm
+		sbx #$30		; **********		; ILLEGAL opcode X = (A & X) - imm
 		stx vmptr+1
 		eor #$07
 bassdone:
@@ -208,7 +185,7 @@ init:	nop
 ;		sta $02,x
 ;		dex
 ;		bne initlp
-		stx $0301						; set irq vector hi = $00, lo already $031 -> IRQ = $0031
+		stx $0301						; set irq vector hi = $00
 		jmp start+ZPDIFF				; start code
 ; main routine
 start:	lda #$50						; VIC ECM, 24 lines
@@ -219,7 +196,7 @@ mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
 		ora $da1c						; SID
 		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
-		ldy #$10						; video matrix at $0400, font at $0000
+		ldy #$40						; video matrix at $d000, font at $c000
 		sty $d818						; set VIC reg memory pointers
 		adc (vmptr),y
 		inc vmptr
