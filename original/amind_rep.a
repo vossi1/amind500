@@ -1,0 +1,147 @@
+; disassembled by DASM6502a v.3.1 by Marat Fayzullin
+; modified by Vossi 02/2019
+!cpu 6502
+*= $0801
+l0801:	ora $ff08
+l0804:	!byte $d3
+l0805:	!byte $9e
+l0806:	!byte $32
+l0807:	!byte $32
+l0808:	!byte $32
+l0809:	and $00,x
+l080b:	brk
+l080c:	brk
+l080d:	ora $1c41,y
+l0810:	bne l0812
+l0812:	!byte $dc
+l0813:	brk
+l0814:	brk
+l0815:	ora ($d0),y
+l0817:	cpx #$0b
+l0819:	bpl l084e
+l081b:	asl $9061
+l081e:	sbc $07,x
+l0820:	brk
+l0821:	!byte $ff
+l0822:	!byte $1f
+l0823:	!byte $14
+l0824:	eor ($d5,x)
+l0826:	bit $15
+l0828:	and $15
+l082a:	!byte $53
+l082b:	ora $61,x
+l082d:	cmp $29,x
+l082f:	!byte $1b
+l0830:	!byte $0f
+l0831:	inc $13
+l0833:	inc $13
+l0835:	bne l0839
+l0837:	inc $20
+l0839:	lda #$61
+l083b:	sta $1c
+l083d:	!byte $a7
+l083e:	jsr $3fe0
+l0841:	beq l084b
+l0843:	bcc l0851
+l0845:	lsr $d011
+l0848:	jmp ($fffc)
+l084b:	ldy #$6d
+l084d:	sty $22
+l084f:	sty $d7
+l0851:	lsr
+l0852:	!byte $4b
+l0853:	!byte $1c
+l0854:	tay
+l0855:	lda $13
+l0857:	and #$30
+l0859:	bne l085d
+l085b:	dec $1c
+l085d:	cpx #$2f
+l085f:	beq l0872
+l0861:	bcs l0865
+l0863:	ldx #$02
+l0865:	cmp #$10
+l0867:	beq l0872
+l0869:	txa
+l086a:	and #$03
+l086c:	tax
+l086d:	lda $f3,x
+l086f:	sta $0a
+l0871:	and l00ab
+l0874:	bcs l0887
+l0876:	!byte $b7
+l0877:	!byte $22
+l0878:	ldx $21,y
+l087a:	sta $00,x
+l087c:	lda $13
+l087e:	!byte $4b
+l087f:	asl $cbaa
+l0882:	sed
+l0883:	stx $cc
+l0885:	eor #$07
+l0887:	sta $0b
+l0889:	lda $13
+l088b:	and #$0f
+l088d:	bne l089e
+l088f:	lda #$b8
+l0891:	!byte $47
+l0892:	!byte $14
+l0893:	bcc l0897
+l0895:	sta $14
+l0897:	and #$07
+l0899:	tax
+l089a:	lda $f7,x
+l089c:	sta $12
+l089e:	ldy #$08
+l08a0:	!byte $b7
+l08a1:	ora l0f91
+l08a4:	dey
+l08a5:	bpl l08a0
+l08a7:	tay
+l08a8:	!byte $b7
+l08a9:	ora #$91
+l08ab:	!byte $03
+l08ac:	dey
+l08ad:	bne l08a8
+l08af:	jmp $ea7e
+l08b2:	sei
+l08b3:	stx l0286
+l08b6:	stx $d021
+l08b9:	jsr $e544
+l08bc:	ldx #$fd
+l08be:	lda l0802,x
+l08c1:	sta $02,x
+l08c3:	dex
+l08c4:	bne l08be
+l08c6:	stx l0315
+l08c9:	jmp l00cc
+l08cc:	lda #$50
+l08ce:	sta $d011
+l08d1:	cli
+l08d2:	lda $dc04
+l08d5:	ldy #$c3
+l08d7:	ora $d41c
+l08da:	pha
+l08db:	!byte $4b
+l08dc:	!byte $04
+l08dd:	ldy #$30
+l08df:	sty $d018
+l08e2:	adc ($cb),y
+l08e4:	inc $cb
+l08e6:	adc ($cb),y
+l08e8:	ror
+l08e9:	ora $20
+l08eb:	ldy #$58
+l08ed:	ora $d5
+l08ef:	sta ($cb),y
+l08f1:	bne l08d2
+l08f3:	!byte $2b
+l08f4:	tax
+l08f5:	!byte $02
+l08f6:	!byte $62
+l08f7:	brk
+l08f8:	clc
+l08f9:	rol $20
+l08fb:	!byte $12
+l08fc:	bit $13
+l08fe:	bpl l0900

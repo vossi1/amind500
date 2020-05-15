@@ -1,0 +1,147 @@
+; disassembled by DASM6502a v.3.1 by Marat Fayzullin
+; modified by Vossi 02/2019
+!cpu 6502
+*= $0801
+		ora $ff08
+		!byte $d3
+		!byte $9e
+		!byte $32
+		!byte $32
+		!byte $32
+		and $00,x
+		brk
+		brk
+		ora $1c41,y
+		bne l0812
+l0812:	!byte $dc
+		brk
+		brk
+		ora ($d0),y
+		cpx #$0b
+		bpl l084e
+		asl $9061
+		sbc $07,x
+		brk
+		!byte $ff
+		!byte $1f
+		!byte $14
+		eor ($d5,x)
+		bit $15
+		and $15
+		!byte $53
+		ora $61,x
+		cmp $29,x
+		!byte $1b
+		!byte $0f
+		inc $13
+		inc $13
+		bne l0839
+		inc $20
+l0839:	lda #$61
+		sta $1c
+		!byte $a7
+		jsr $3fe0
+		beq l084b
+		bcc l0851
+		lsr $d011
+		jmp ($fffc)
+l084b:	ldy #$6d
+		sty $22
+		sty $d7
+l0851:	lsr
+		!byte $4b
+		!byte $1c
+		tay
+		lda $13
+		and #$30
+		bne l085d
+		dec $1c
+l085d:	cpx #$2f
+		beq l0872
+		bcs l0865
+		ldx #$02
+l0865:	cmp #$10
+		beq l0872
+		txa
+		and #$03
+		tax
+		lda $f3,x
+		sta $0a
+		and l00ab
+		bcs l0887
+		!byte $b7
+		!byte $22
+		ldx $21,y
+		sta $00,x
+		lda $13
+		!byte $4b
+		asl $cbaa
+		sed
+		stx $cc
+		eor #$07
+l0887:	sta $0b
+		lda $13
+		and #$0f
+		bne l089e
+		lda #$b8
+		!byte $47
+		!byte $14
+		bcc l0897
+		sta $14
+l0897:	and #$07
+		tax
+		lda $f7,x
+		sta $12
+l089e:	ldy #$08
+l08a0:	!byte $b7
+		ora l0f91
+		dey
+		bpl l08a0
+		tay
+l08a8:	!byte $b7
+		ora #$91
+		!byte $03
+		dey
+		bne l08a8
+		jmp $ea7e
+		sei
+		stx l0286
+		stx $d021
+		jsr $e544
+		ldx #$fd
+l08be:	lda l0802,x
+		sta $02,x
+		dex
+		bne l08be
+		stx l0315
+		jmp l00cc
+		lda #$50
+		sta $d011
+		cli
+l08d2:	lda $dc04
+		ldy #$c3
+		ora $d41c
+		pha
+		!byte $4b
+		!byte $04
+		ldy #$30
+		sty $d018
+		adc ($cb),y
+		inc $cb
+		adc ($cb),y
+		ror
+		ora $20
+		ldy #$58
+		ora $d5
+		sta ($cb),y
+		bne l08d2
+		!byte $2b
+		tax
+		!byte $02
+		!byte $62
+		brk
+		clc
+		rol $20
+		!byte $12
+		bit $13
+		bpl l0900
