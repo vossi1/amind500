@@ -57,7 +57,7 @@ irq:	inc clock							; increase counter lowyte 2 bytes
 		inc clock_msb						; increase counter highbyte
 noc1	lda #$61
 		sta SID+2*7+4						; SID osc2 control reg
-		lax clock_msb						; ILLEGAL opcode
+		lax clock_msb						; ILLEGAL opcode A, X = address
 		cpx #$3f
 		beq highpass
 		bcc noend
@@ -69,7 +69,7 @@ l084d:	sty SID+$18
 		sty mod_op2
 noend:	
 		lsr
-		asr #$1c							; ILLEGAL opcode
+		asr #$1c							; ILLEGAL opcode (A & imm) /2
 		tay
 		lda clock
 		and #$30
@@ -90,15 +90,15 @@ nointro:
 		sta SID
 		!byte $2d							; and absolute
 bassoff:
-		lxa #$00							; ILLEGAL opcode
+		lxa #$00							; ILLEGAL opcode clears A, X
 		bcs bassdone
-		lax <(script+1+ZPDIFF),y			; ILLEGAL opcode
+		lax <(script+1+ZPDIFF),y			; ILLEGAL opcode A, X = address
 		ldx <(script+ZPDIFF),y
 		sta $00,x
 		lda clock
-		asr #$0e							; ILLEGAL opcode
+		asr #$0e							; ILLEGAL opcode A = (A & imm) /2
 		tax
-		sbx #256-8							; ILLEGAL opcode
+		sbx #256-8							; ILLEGAL opcode X = (A & X) - imm
 		stx vmptr+1
 		eor #$07
 bassdone:
@@ -107,7 +107,7 @@ bassdone:
 		and #$0f
 		bne nomel
 		lda #$b8
-		sre mel_lfsr						; ILLEGAL opcode
+		sre mel_lfsr						; ILLEGAL opcode mem = (mem / 2) : A = A eor mem
 		bcc noc2
 		sta mel_lfsr
 noc2:	and #$07
@@ -117,13 +117,13 @@ noc2:	and #$07
 nomel:
 		ldy #$08
 vicloop:
-		lax SID+3,y							; ILLEGAL opcode
+		lax SID+3,y							; ILLEGAL opcode A, X = address
 		sta (pt_d01c+ZPDIFF),y
 		dey
 		bpl vicloop
 		tay
 loop:	
-		lax SID-1,y							; ILLEGAL opcode
+		lax SID-1,y							; ILLEGAL opcode A, X = address
 		sta (pt_d3ff+ZPDIFF),y
 		dey
 		bne loop
@@ -148,7 +148,7 @@ mainlp:	lda $dc04 						; grab CIA timer lo as random value
 		ldy #$c3
 		ora $d41c
 		pha
-		asr #$04						; ILLEGAL opcode
+		asr #$04						; ILLEGAL opcode (A & imm) /2
 		ldy #$30						; video matrix at $0c00, font at $0000
 		sty $d018						; set VIC reg memory pointers
 		adc (vmptr),y
