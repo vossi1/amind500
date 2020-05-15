@@ -12,7 +12,7 @@ ZPDIFF					= -$0100
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
 !addr SID				= $0a		; SID mirror starts at $0a
-!addr KERNAL_IRQ		= $fcb3
+!addr KERNAL_IRQ		= $fbf8
 !addr HW_RESET			= $fffc
 ; *************************************** BASIC LOADER ********************************************
 !zone basic
@@ -86,7 +86,7 @@ script:	!byte $ff, $1f
 		!byte $15, $61
 		!byte $d5, $29
 		!byte $1b, $0f
-; interrupt routine
+; $31 interrupt routine
 irq:	inc clock							; increase counter lowyte 2 bytes
 		inc clock
 		bne noc1
@@ -99,10 +99,12 @@ noc1	lda #$61
 		bcc noend
 		lsr $d811
 		jmp (HW_RESET)
+; $4b
 highpass:
 		ldy #$6d
-l084d:	sty SID+$18
+		sty SID+$18
 		sty mod_op2
+; $51
 noend:	
 		lsr
 		asr #$1c							; ILLEGAL opcode (A & imm) /2
@@ -111,11 +113,13 @@ noend:
 		and #$30
 		bne noduck
 		dec SID+2*7+4						; SID osc2 control reg
+; $5d
 noduck:	
 		cpx #$2f
 		beq bassoff
 		bcs nointro
 		ldx #$02
+; $65
 nointro:
 		cmp #$10
 		beq bassoff
@@ -125,6 +129,7 @@ nointro:
 		lda <(basstbl+ZPDIFF),x
 		sta SID
 		!byte $2d							; and absolute
+; $72
 bassoff:
 		lxa #$00							; ILLEGAL opcode clears A, X
 		bcs bassdone
@@ -134,9 +139,10 @@ bassoff:
 		lda clock
 		asr #$0e							; ILLEGAL opcode A = (A & imm) /2
 		tax
-		sbx #$30		; **********		; ILLEGAL opcode X = (A & X) - imm
+		sbx #$34		; **********		; ILLEGAL opcode X = (A & X) - imm
 		stx vmptr+1
 		eor #$07
+; $87
 bassdone:
 		sta SID+0*7+1						; SID osc1 frequency hi
 		lda clock
@@ -146,48 +152,42 @@ bassdone:
 		sre mel_lfsr						; ILLEGAL opcode mem = (mem / 2) : A = A eor mem
 		bcc noc2
 		sta mel_lfsr
+; $97
 noc2:	and #$07
 		tax
 		lda <(freqtbl+ZPDIFF),x
 		sta SID+1*7+1						; SID osc2 frequency hi
+; $9e
 nomel:
 		ldy #$08
+; $a0
 vicloop:
 		lax SID+3,y							; ILLEGAL opcode A, X = address
 		sta (pt_d81c+ZPDIFF),y
 		dey
 		bpl vicloop
 		tay
+		bit $00	; ****** DUMMY for $a9 break flag!
+; $aa
 loop:	
 		lax SID-1,y							; ILLEGAL opcode A, X = address
 		sta (pt_d9ff+ZPDIFF),y
 		dey
 		bne loop
 		jmp KERNAL_IRQ
-; code starts here at $b4
+; $b4 init
 init:	nop
 		nop
 		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
+		lda #$40
+		sta $d818
 		ldx #$31						; set irq vector lo
 		stx $0300
 		ldx #$00						; Background color = X
 		stx $d821
-;		jsr $e544						; clear screen
-;		ldx #$fd						; code copied to ZP from $03-$ff
-;initlp:lda $0802,x
-;		sta $02,x
-;		dex
-;		bne initlp
 		stx $0301						; set irq vector hi = $00
 		jmp start+ZPDIFF				; start code
-; main routine
+; $cc main routine
 start:	lda #$50						; VIC ECM, 24 lines
 		sta $d811						
 		cli								; enable interrupts
@@ -196,8 +196,8 @@ mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
 		ora $da1c						; SID
 		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
-		ldy #$40						; video matrix at $d000, font at $c000
-		sty $d818						; set VIC reg memory pointers
+		ldy #$30						; video matrix at $d000, font at $c000
+		sty $d7ff	; ***** DUMMY		; set VIC reg memory pointers
 		adc (vmptr),y
 		inc vmptr
 		adc (vmptr),y
@@ -208,7 +208,9 @@ mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
 		sta (vmptr),y
 		bne mainlp						; branch always
 ; frequency table
+; $f3
 basstbl:
 		!byte $2B, $AA, $02, $62
+; $f7
 freqtbl:
 		!byte $00, $18, $26, $20, $12, $24, $13, $10 
