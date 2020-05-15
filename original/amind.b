@@ -1,101 +1,42 @@
 ; "A Mind Was Born" 
 ; disassembled by DASM6502b v.3.1 by Marat Fayzullin
 ; modified by Vossi 02/2019
-; ported to P500, comments by Vossi 05/2020
+; comments by Vossi 05/2020
 !cpu 6510
 !to "amind500.prg", cbm
 ; ***************************************** CONSTANTS *********************************************
-SYSTEMBANK				= $0f		; systembank
-
-ZPDIFF					= -$0100
+ZPDIFF					= -$0800
 ; ***************************************** ADDRESSES *********************************************
-!addr CodeBank			= $00		; code bank register
-!addr IndirectBank		= $01		; indirect bank register
 !addr SID				= $0a		; SID mirror starts at $0a
-!addr KERNAL_IRQ		= $fbf8
+!addr KERNAL_IRQ		= $ea7e
 !addr HW_RESET			= $fffc
 ; *************************************** BASIC LOADER ********************************************
 !zone basic
-*= $0003
-		!byte $37, $00, $0A, $00, $97, $38, $33, $2C, $31, $32, $30, $3A, $97, $38, $34, $2C
-		!byte $31, $36, $39, $3A, $97, $38, $35, $2C, $30, $3A, $97, $38, $36, $2C, $31, $33
-		!byte $33, $3A, $97, $38, $37, $2C, $30, $3A, $97, $38, $38, $2C, $32, $33, $34, $3A
-		!byte $9E, $38, $33, $00, $00, $00, $9E, $31, $37, $36, $00, $00, $00
-		; 10 poke83,120:poke84,169:poke85,0:poke86,133:poke87,0:poke88,234:sys83
+*= $0801
+		!byte $0d, $08
+pt_d3ff:!byte $ff, $d3
+		!byte $9E, $32, $32, $32, $35;, $00, $00, $00
+		; 54271 SYS 2225
+;*= $0003
+;		!byte $37, $00, $0A, $00, $97, $38, $33, $2C, $31, $32, $30, $3A, $97, $38, $34, $2C
+;		!byte $31, $36, $39, $3A, $97, $38, $35, $2C, $30, $3A, $97, $38, $36, $2C, $31, $33
+;		!byte $33, $3A, $97, $38, $37, $2C, $30, $3A, $97, $38, $38, $2C, $32, $33, $34, $3A
+;		!byte $9E, $38, $33, $00, $00, $00, $9E, $31, $37, $36, $00, $00, $00
+;		; 10 poke83,120:poke84,169:poke85,0:poke86,133:poke87,0:poke88,234:sys83
 ; ***************************************** ZERO PAGE *********************************************
 !zone zeropage
-*= $0040
-		!word $0002						; +1 = $0003 code start in bank 15
-		!word $df00						; TPI2
-		!word $0400
-		!word $0500
-		!word $0600
-		!word $0700
-
-zp_ptr					= $40			; pointer to $0002
-TPI2					= $42
-screen0					= $44
-screen1					= $46
-screen2					= $48
-screen3					= $4a
-
 clock					= $13
 mel_lfsr				= $14
 clock_msb				= $20
 vmptr					= $cb
 mod_opl					= $d5
 mod_op2					= $d7
-; ***************************************** ZONE MAIN *********************************************
-!zone main
-; bank 15 - 6 bytes poked from BASIC
-; $0053									; sys83 goes here in bank 15
-;		sei								; disable interrrupts
-;		lda #$00
-;		sta $00							; switch to code bank 0
-; $0058	nop								; from here the CPU continues in bank 0
-*= $0058
-		sei								; disable interrrupts
-		nop
-		ldx #SYSTEMBANK
-		stx IndirectBank				; indirect bank = 15
-
-		ldy #$ff						; copies code to bank 15 ZP from $03-$ff
-codecpy:lda $0102,y
-		sta (zp_ptr),y
-		dey
-		bne codecpy
-
-		lda #$20						; clears screen in bank 15
-clrscr:	sta (screen0),y
-		sta (screen1),y
-		sta (screen2),y
-		sta (screen3),y
-		dey
-		bne clrscr
-
-		ldy #$02
-		lda (TPI2),y					; load TPI2 port c
-		and #$3f						; clear bit#6,7 vic 16k select bank $0000-$3fff
-		sta (TPI2),y					; store to TPI2 port c
-
-		jmp switch
-; switch routine		
-*= $00b4
-switch: 								; X already = SYSTEMBANK
-		stx CodeBank					; switch to copied code in bank 15
-		nop
-		nop
-		nop
-
 ; ***************************************** ZONE CODE *********************************************
 !zone code
-*= $0103
-pt_d9ff:!byte $ff, $d9							; SID base = $da00
-pt_d81c:!byte $1c, $d8							; VIC reg $1c
-		!byte $32, $32, $35;, $00, $00, $00
-;
+*= $080a
 ; $0a SID register morror $d400-$d418
-		!byte $00, $00, $00, $19, $41, $1c, $d0	; osc 1
+		!byte $00, $00, $00, $19, $41			; osc 1
+pt_d01c:!byte $1c, $d0
 ;		!byte $00, $dc, $00, $00, $11			  overlapped VIC BGR color mirror $d020-$d024
 		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
 		!byte $0b, $10, $33, $0e, $61, $90, $f5 ; osc 3
@@ -120,7 +61,7 @@ noc1	lda #$61
 		cpx #$3f
 		beq highpass
 		bcc noend
-		lsr $d811
+		lsr $d011
 		jmp (HW_RESET)
 highpass:
 		ldy #$6d
@@ -157,7 +98,7 @@ bassoff:
 		lda clock
 		asr #$0e							; ILLEGAL opcode A = (A & imm) /2
 		tax
-		sbx #256-4		; **********		; ILLEGAL opcode X = (A & X) - imm
+		sbx #256-8							; ILLEGAL opcode X = (A & X) - imm
 		stx vmptr+1
 		eor #$07
 bassdone:
@@ -177,50 +118,39 @@ nomel:
 		ldy #$08
 vicloop:
 		lax SID+3,y							; ILLEGAL opcode A, X = address
-		sta (pt_d81c+ZPDIFF),y
+		sta (pt_d01c+ZPDIFF),y
 		dey
 		bpl vicloop
 		tay
 loop:	
 		lax SID-1,y							; ILLEGAL opcode A, X = address
-		sta (pt_d9ff+ZPDIFF),y
+		sta (pt_d3ff+ZPDIFF),y
 		dey
 		bne loop
 		jmp KERNAL_IRQ
-; code starts here at $b4
-init:	nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		nop
-		ldx #$31						; set irq vector lo
-		stx $0300
-		ldx #$00						; Background color = X
-		stx $d821
-;		jsr $e544						; clear screen
-;		ldx #$fd						; code copied to ZP from $03-$ff
-;initlp:lda $0802,x
-;		sta $02,x
-;		dex
-;		bne initlp
-		stx $0301						; set irq vector hi = $00, lo already $031 -> IRQ = $0031
+; code starts here at $08b4
+init:	sei								; disable interrupts
+		stx $0286						; Background color = X / $00 at startup
+		stx $d021						; two writes for different c64 kernals
+		jsr $e544						; clear screen
+		ldx #$fd						; code copied to ZP from $03-$ff
+initlp:	lda $0802,x
+		sta $02,x
+		dex
+		bne initlp
+		stx $0315						; set irq vector hi = $00, lo already $031 -> IRQ = $0031
 		jmp start+ZPDIFF				; start code
 ; main routine
 start:	lda #$50						; VIC ECM, 24 lines
-		sta $d811						
+		sta $d011						
 		cli								; enable interrupts
-mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
+mainlp:	lda $dc04 						; grab CIA timer lo as random value
 		ldy #$c3
-		ora $da1c						; SID
+		ora $d41c
 		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
-		ldy #$10						; video matrix at $0400, font at $0000
-		sty $d818						; set VIC reg memory pointers
+		ldy #$30						; video matrix at $0c00, font at $0000
+		sty $d018						; set VIC reg memory pointers
 		adc (vmptr),y
 		inc vmptr
 		adc (vmptr),y
