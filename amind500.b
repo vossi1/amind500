@@ -6,8 +6,6 @@
 !to "amind500.prg", cbm
 ; ***************************************** CONSTANTS *********************************************
 ZPDIFF					= -$0800
-const_d3ff				= $03
-const_d01c				= $0f
 ; ***************************************** ADDRESSES *********************************************
 !addr SID				= $0a		; SID mirror starts at $0a
 !addr KERNAL_IRQ		= $ea7e
@@ -15,7 +13,9 @@ const_d01c				= $0f
 ; *************************************** BASIC LOADER ********************************************
 !zone basic
 *= $0801
-		!byte $0d, $08, $ff, $d3, $9E, $32, $32, $32, $35;, $00, $00, $00
+		!byte $0d, $08
+pt_d3ff:!byte $ff, $d3
+		!byte $9E, $32, $32, $32, $35;, $00, $00, $00
 		; 54271 SYS 2225
 ;*= $0003
 ;		!byte $37, $00, $0A, $00, $97, $38, $33, $2C, $31, $32, $30, $3A, $97, $38, $34, $2C
@@ -28,30 +28,28 @@ const_d01c				= $0f
 clock					= $13
 mel_lfsr				= $14
 clock_msb				= $20
-script					= $21
 vmptr					= $cb
 mod_opl					= $d5
 mod_op2					= $d7
-basstbl					= $f3
-freqtbl					= $f7
 ; ***************************************** ZONE CODE *********************************************
 !zone code
 *= $080a
 ; $0a SID register morror $d400-$d418
-		!byte $00, $00, $00, $19, $41, $1c, $d0	; osc 1
-		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2 / first 5B=VIC BGR color mirror $d020-$d024
+		!byte $00, $00, $00, $19, $41			; osc 1
+pt_d01c:!byte $1c, $d0
+;		!byte $00, $dc, $00, $00, $11			  overlapped VIC BGR color mirror $d020-$d024
+		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
 		!byte $0b, $10, $33, $0e, $61, $90, $f5 ; osc 3
-		!byte $07, $00, $ff, $1f 				; SID common regs
-
-		!byte $14
-		eor (mod_opl,x)
-		bit $15
-		and $15
-		!byte $53
-		ora $61,x
-		cmp $29,x
-		!byte $1b
-		!byte $0f
+		!byte $07, $00; $ff, $1f 				; SID common regs - last two overlapped with script
+; script: 1.byte = ZP-address, 2.byte = value
+script:	!byte $ff, $1f
+		!byte $14, $41
+		!byte $d5, $24
+		!byte $15, $25
+		!byte $15, $53
+		!byte $15, $61
+		!byte $d5, $29
+		!byte $1b, $0f
 ; interrupt routine
 irq:	inc clock							; increase counter lowyte 2 bytes
 		inc clock
@@ -88,14 +86,14 @@ nointro:
 		txa
 		and #$03
 		tax
-		lda basstbl,x
+		lda <(basstbl+ZPDIFF),x
 		sta SID
 		!byte $2d							; and absolute
 bassoff:
 		lxa #$00							; ILLEGAL opcode
 		bcs bassdone
-		lax script+1,y						; ILLEGAL opcode
-		ldx script,y
+		lax <(script+1+ZPDIFF),y			; ILLEGAL opcode
+		ldx <(script+ZPDIFF),y
 		sta $00,x
 		lda clock
 		asr #$0e							; ILLEGAL opcode
@@ -114,19 +112,19 @@ bassdone:
 		sta mel_lfsr
 noc2:	and #$07
 		tax
-		lda freqtbl,x
+		lda <(freqtbl+ZPDIFF),x
 		sta SID+1*7+1						; SID osc2 frequency hi
 nomel:
 		ldy #$08
 vicloop:
 		lax SID+3,y							; ILLEGAL opcode
-		sta (const_d01c),y
+		sta (pt_d01c+ZPDIFF),y
 		dey
 		bpl vicloop
 		tay
 loop:	
 		lax SID-1,y							; ILLEGAL opcode
-		sta (const_d3ff),y
+		sta (pt_d3ff+ZPDIFF),y
 		dey
 		bne loop
 		jmp KERNAL_IRQ
@@ -162,5 +160,8 @@ mainlp:	lda $dc04 						; grab CIA timer lo as random value
 		ora mod_opl
 		sta (vmptr),y
 		bne mainlp						; branch always
-; table
-		!byte $2B, $AA, $02, $62, $00, $18, $26, $20, $12, $24, clock, $10 
+; frequency table
+basstbl:
+		!byte $2B, $AA, $02, $62
+freqtbl:
+		!byte $00, $18, $26, $20, $12, $24, $13, $10 
