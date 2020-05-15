@@ -12,7 +12,7 @@ ZPDIFF					= -$0100
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
 !addr SID				= $0a		; SID mirror starts at $0a
-!addr KERNAL_IRQ		= $fbf8
+!addr KERNAL_IRQ		= $fcb3
 !addr HW_RESET			= $fffc
 ; *************************************** BASIC LOADER ********************************************
 !zone basic
