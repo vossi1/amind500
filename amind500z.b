@@ -135,7 +135,7 @@ skip:	bcs bassdone
 		lda clock						; load random clcok value
 		asr #$0e						; ILLEGAL opcode A = (A & imm) /2
 		tax								; ^ random 0-$e rightshiftet -> 0-7
-		sbx #$f8						; ILLEGAL opcode X = (A & X) - imm
+		sbx #$f7						; ILLEGAL opcode X = (A & X) - imm
 		stx vm_ptr+1					; ^ random 8-$f
 		eor #$07
 ; $c8
@@ -181,24 +181,24 @@ mod_op2:ora temp
 		sta temp
 ;		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
-		ldy #$30						; video matrix at $0c00, font at $0000
-		lda (vm_ptr),y
+;		ldy #$30						; video matrix at $0c00, font at $0000
+		ldx #$00
+		lda (vm_ptr,x)
 ;		sta temp+1
 		inc vm_ptr
 ;		lda (vm_ptr),y
 ;		sta temp+2
 ;		lda temp
-;		adc temp+1
+		adc temp
 ;		adc temp+2
 ;		adc (vm_ptr),y
 ;		inc vm_ptr
 ;		adc (vm_ptr),y
 		ror
 		ora clock_hi
-		ldy #$58
-		eor <(mod_op1)
-;		ora <(mod_op1)
-		sta (vm_ptr),y
+;		ldy #$58
+		ora <(mod_op1)
+		sta (vm_ptr,x)
 		ldy #$1c+1
 		lda (sid_ptr),y
 		sta temp
