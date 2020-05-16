@@ -7,7 +7,7 @@
 ; ***************************************** CONSTANTS *********************************************
 SYSTEMBANK				= 15		; systembank
 CODEBANK				= 0			; codebank 0-9 for basic loader
-RASTERLINE				= $fe
+RASTERLINE				= $32
 ; ************************************** P500 REGISTER ********************************************
 VR_MODEY				= $11
 VR_RASTER				= $12
@@ -25,6 +25,7 @@ VR_BGRCOL				= $21
 !addr CIAbase			= $dc00		; CIA
 !addr TPI1base			= $de00		; TPI1
 !addr TPI2base			= $df00		; TPI2
+!addr temp				= $0200
 ; ***************************************** ZERO PAGE *********************************************
 !zone zeropage
 !addr clock				= $4a
@@ -37,7 +38,7 @@ VR_BGRCOL				= $21
 		!byte $0a, $00, $81, $49, $b2, $34, $33, $a4, $35, $30, $3a		; fori=xxtoyy:
 		!byte $dc, $30+CODEBANK, $3a, $41, $b2, $c2, $28, $49, $29, $3a	; bank1:a=peek(i):
 		!byte $dc, $31, $35, $3a, $97, $49, $2c, $41, $3a				; bank15:pokei,a:
-		!byte $82, $3a, $9e, $34, $33, $00, $00, $00					; next:sysxx
+temp2:	!byte $82, $3a, $9e, $34, $33, $00, $00, $00					; next:sysxx
 	; 10 fori=43to50:bank1:a=peek(i):bank15:pokei,a:next:sys43
 ; *************************************** ZONE BANKINIT *******************************************
 !zone bankinit
@@ -121,12 +122,14 @@ nointro:
 		tax
 		lda <(basstbl),x
 		sta <(sid_mir)
-		!byte $2d						; and absolute instruction
+		and #$03						; value on orginal address $ab		
+		jmp skip
+;		!byte $2d						; and absolute instruction
 ; $b3
 bassoff:
 		lxa #$00						; ILLEGAL opcode clears A, X
-		bcs bassdone
-		lax <(script+1),y			; ILLEGAL opcode A, X = address
+skip:	bcs bassdone
+		lax <(script+1),y				; ILLEGAL opcode A, X = address
 		ldx <(script),y
 		sta $00,x						; store script value to script address
 		lda clock						; load random clcok value
@@ -137,7 +140,7 @@ bassoff:
 		eor #$07
 ; $c8
 bassdone:
-		sta <(sid_mir)+0*7+1		; SID osc1 frequency hi
+		sta <(sid_mir)+0*7+1			; SID osc1 frequency hi
 		lda clock
 		and #$0f
 		bne nomel
@@ -174,19 +177,32 @@ main:	ldy #$06
 ; $f5
 mod_op1:ldy #$c3
 ; $f7
-mod_op2:ora $0c00;SID+$1c
+mod_op2:ora temp
+		sta temp
 ;		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
 		ldy #$30						; video matrix at $0c00, font at $0000
-;		adc (vm_ptr),y
+		lda (vm_ptr),y
+;		sta temp+1
 		inc vm_ptr
+;		lda (vm_ptr),y
+;		sta temp+2
+;		lda temp
+;		adc temp+1
+;		adc temp+2
+;		adc (vm_ptr),y
+;		inc vm_ptr
 ;		adc (vm_ptr),y
 		ror
 		ora clock_hi
 		ldy #$58
-		ora <(mod_op1)
+		eor <(mod_op1)
+;		ora <(mod_op1)
 		sta (vm_ptr),y
-		bne main						; branch always
+		ldy #$1c+1
+		lda (sid_ptr),y
+		sta temp
+		jmp main
 ; **************************************** IRQ HANDLER ********************************************
 !zone irqhandler
 IRQ_Handler:
@@ -195,10 +211,6 @@ IRQ_Handler:
 		pha
 		tya
 		pha
-		lda IndirectBank				; load actibe indirct bank
-		pha								; remember on stack
-		lda #SYSTEMBANK
-		sta IndirectBank				; select bank 15
 		ldy #VR_IRQ
 		lda (VIC),y						; load VIC interrupt reg and mask bit 1
 		and #$01
@@ -212,9 +224,7 @@ IRQ_Handler:
 		lda #$81
 		ldy #VR_IRQ
 		sta (VIC),y						; clear VIC raster interrupt
-endirq: pla
-		sta IndirectBank				; restore indirect bank before interrupt
-		pla
+endirq:	pla
 		tay
 		pla
 		tax
@@ -225,7 +235,6 @@ endirq: pla
 		; $b2 initialization routine
 init:	ldx #$ff						; init new stack in codebank
 		txs
-		cld								; clear decimal flag
 		lda #>IRQ_Handler
 		sta HW_IRQ+1
 		lda #<IRQ_Handler
@@ -244,9 +253,9 @@ init:	ldx #$ff						; init new stack in codebank
 		lda #$30
 		ldy #VR_MEMPT					; VIC reg $18 memory pointers
 		sta (VIC),y						; set VM13-10=$3 screen at $0c00, CB13-11=0 char at $0000
-		lda #$7f						; bit#7=0 clears/mask out all 5 irq sources with bit#0-4 = 1
-		ldy #$0d						; CIA interrupt control register
-		sta (CIA),y						; disable all hardware interrupts
+;		lda #$7f						; bit#7=0 clears/mask out all 5 irq sources with bit#0-4 = 1
+;		ldy #$0d						; CIA interrupt control register
+;		sta (CIA),y						; disable all hardware interrupts
 		lda #$00
 		ldy #$05
 		sta (TPI1),y					; set TPI1 reg $5 interrupt mask reg = $00 - disable all irq
