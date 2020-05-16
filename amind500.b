@@ -33,8 +33,6 @@ clock					= $13
 mel_lfsr				= $14
 clock_msb				= $20
 vmptr					= $cb
-mod_opl					= $d5
-mod_op2					= $d7
 ; ***************************************** ZONE MAIN *********************************************
 !zone main
 ; bank 15 - 6 bytes poked from BASIC
@@ -103,7 +101,7 @@ noc1	lda #$61
 highpass:
 		ldy #$6d
 		sty SID+$18
-		sty mod_op2
+		sty <(mod_op2+ZPDIFF)
 ; $51
 noend:	
 		lsr
@@ -167,7 +165,7 @@ vicloop:
 		dey
 		bpl vicloop
 		tay
-		bit $00	; ****** DUMMY for $a9 break flag!
+		bit $00	; ****** DUMMY for $a9 stop key flag!
 ; $aa
 loop:	
 		lax SID-1,y							; ILLEGAL opcode A, X = address
@@ -191,9 +189,10 @@ init:	nop
 start:	lda #$50						; VIC ECM, 24 lines
 		sta $d811						
 		cli								; enable interrupts
+; $d2
 mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
-		ldy #$c3
-		ora $da1c						; SID
+mod_op1:ldy #$c3
+mod_op2:ora $da1c						; SID
 		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
 		ldy #$30						; video matrix at $d000, font at $c000
@@ -204,7 +203,7 @@ mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
 		ror
 		ora clock_msb
 		ldy #$58
-		ora mod_opl
+		ora <(mod_op1+ZPDIFF)
 		sta (vmptr),y
 		bne mainlp						; branch always
 ; frequency table
