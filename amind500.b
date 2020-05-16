@@ -11,7 +11,6 @@ ZPDIFF					= -$0100
 ; ***************************************** ADDRESSES *********************************************
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
-!addr SID				= $0a		; SID mirror starts at $0a
 !addr KERNAL_IRQ		= $fbf8
 !addr HW_RESET			= $fffc
 ; *************************************** BASIC LOADER ********************************************
@@ -69,28 +68,28 @@ pt_d9ff:!byte $ff, $d9							; SID base = $da00
 pt_d81c:!byte $1c, $d8							; VIC reg $1c
 		!byte $32, $32, $35;, $00, $00, $00
 ;
-; $0a SID register morror $d400-$d418
-		!byte $00, $00, $00, $19, $41, $1c, $d0	; osc 1
+; $0a SID register mirror $d400-$d418
+sid_mir:!byte $00, $00, $00, $19, $41, $1c, $d0	; osc 1
 ;		!byte $00, $dc, $00, $00, $11			  overlapped VIC BGR color mirror $d020-$d024
 		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
 		!byte $0b, $10, $33, $0e, $61, $90, $f5 ; osc 3
 		!byte $07, $00; $ff, $1f 				; SID common regs - last two overlapped with script
 ; script: 1.byte = ZP-address, 2.byte = value
 script:	!byte $ff, $1f
-		!byte $14, $41
-		!byte $d5, $24
-		!byte $15, $25
-		!byte $15, $53
-		!byte $15, $61
-		!byte $d5, $29
-		!byte $1b, $0f
+		!byte <(sid_mir+ZPDIFF)+$0a, $41
+		!byte <(mod_op1+ZPDIFF), $24
+		!byte <(sid_mir+ZPDIFF)+$0b, $25
+		!byte <(sid_mir+ZPDIFF)+$0b, $53
+		!byte <(sid_mir+ZPDIFF)+$0b, $61
+		!byte <(mod_op1+ZPDIFF), $29
+		!byte <(sid_mir+ZPDIFF)+$11, $0f
 ; $31 interrupt routine
 irq:	inc clock							; increase counter lowyte 2 bytes
 		inc clock
 		bne noc1
 		inc clock_msb						; increase counter highbyte
 noc1	lda #$61
-		sta SID+2*7+4						; SID osc2 control reg
+		sta <(sid_mir+ZPDIFF)+2*7+4					; SID osc3 control reg
 		lax clock_msb						; ILLEGAL opcode A, X = address
 		cpx #$3f
 		beq highpass
@@ -100,7 +99,7 @@ noc1	lda #$61
 ; $4b
 highpass:
 		ldy #$6d
-		sty SID+$18
+		sty <(sid_mir+ZPDIFF)+$18
 		sty <(mod_op2+ZPDIFF)
 ; $51
 noend:	
@@ -110,7 +109,7 @@ noend:
 		lda clock
 		and #$30
 		bne noduck
-		dec SID+2*7+4						; SID osc2 control reg
+		dec <(sid_mir+ZPDIFF)+2*7+4					; SID osc2 control reg
 ; $5d
 noduck:	
 		cpx #$2f
@@ -125,7 +124,7 @@ nointro:
 		and #$03
 		tax
 		lda <(basstbl+ZPDIFF),x
-		sta SID
+		sta <(sid_mir+ZPDIFF)
 		!byte $2d							; and absolute
 ; $72
 bassoff:
@@ -142,7 +141,7 @@ bassoff:
 		eor #$07
 ; $87
 bassdone:
-		sta SID+0*7+1						; SID osc1 frequency hi
+		sta <(sid_mir+ZPDIFF)+0*7+1					; SID osc1 frequency hi
 		lda clock
 		and #$0f
 		bne nomel
@@ -154,13 +153,13 @@ bassdone:
 noc2:	and #$07
 		tax
 		lda <(freqtbl+ZPDIFF),x
-		sta SID+1*7+1						; SID osc2 frequency hi
+		sta <(sid_mir+ZPDIFF)+1*7+1					; SID osc2 frequency hi
 ; $9e
 nomel:
 		ldy #$08
 ; $a0
 vicloop:
-		lax SID+3,y							; ILLEGAL opcode A, X = address
+		lax <(sid_mir+ZPDIFF)+3,y						; ILLEGAL opcode A, X = address
 		sta (pt_d81c+ZPDIFF),y
 		dey
 		bpl vicloop
@@ -168,7 +167,7 @@ vicloop:
 		bit $00	; ****** DUMMY for $a9 stop key flag!
 ; $aa
 loop:	
-		lax SID-1,y							; ILLEGAL opcode A, X = address
+		lax <(sid_mir+ZPDIFF)-1,y							; ILLEGAL opcode A, X = address
 		sta (pt_d9ff+ZPDIFF),y
 		dey
 		bne loop
