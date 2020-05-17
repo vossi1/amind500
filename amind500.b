@@ -24,9 +24,7 @@ ZPDIFF					= -$0100
 ; ***************************************** ZERO PAGE *********************************************
 !zone zeropage
 *= $0040
-		!word $0002						; +1 = $0003 code start in bank 15
-
-zp_ptr					= $40			; pointer to $0002
+zp_ptr:	!word $0002						; +1 = $0003 code start in bank 15
 
 clock					= $13
 mel_lfsr				= $14
@@ -77,24 +75,24 @@ sid_mir:!byte $00, $00, $00, $19, $41, $1c, $d0	; osc 1
 ; script: 1.byte = ZP-address, 2.byte = value
 script:	!byte $ff, $1f
 		!byte <(sid_mir+ZPDIFF)+$0a, $41
-		!byte <(mod_op1+ZPDIFF), $24
+		!byte <(mod_op1+ZPDIFF), 	 $24
 		!byte <(sid_mir+ZPDIFF)+$0b, $25
 		!byte <(sid_mir+ZPDIFF)+$0b, $53
 		!byte <(sid_mir+ZPDIFF)+$0b, $61
-		!byte <(mod_op1+ZPDIFF), $29
+		!byte <(mod_op1+ZPDIFF), 	 $29
 		!byte <(sid_mir+ZPDIFF)+$11, $0f
 ; $31 interrupt routine
-irq:	inc clock							; increase counter lowyte 2 bytes
+irq:	inc clock						; increase counter lowyte 2 bytes
 		inc clock
 		bne noc1
-		inc clock_msb						; increase counter highbyte
+		inc clock_msb					; increase counter highbyte
 noc1	lda #$61
-		sta <(sid_mir+ZPDIFF)+2*7+4					; SID osc3 control reg
-		lax clock_msb						; ILLEGAL opcode A, X = address
+		sta <(sid_mir+ZPDIFF)+2*7+4		; SID osc3 control reg
+		lax clock_msb					; ILLEGAL opcode A, X = address
 		cpx #$3f
 		beq highpass
 		bcc noend
-;		lsr $d811
+;		lsr $d811						; not needed - reset does not work!
 		jmp (HW_RESET)
 ; $4b
 highpass:
@@ -104,12 +102,12 @@ highpass:
 ; $51
 noend:	
 		lsr
-		asr #$1c							; ILLEGAL opcode (A & imm) /2
+		asr #$1c						; ILLEGAL opcode (A & imm) /2
 		tay
 		lda clock
 		and #$30
 		bne noduck
-		dec <(sid_mir+ZPDIFF)+2*7+4					; SID osc2 control reg
+		dec <(sid_mir+ZPDIFF)+2*7+4		; SID osc2 control reg
 ; $5d
 noduck:	
 		cpx #$2f
@@ -125,65 +123,66 @@ nointro:
 		tax
 		lda <(basstbl+ZPDIFF),x
 		sta <(sid_mir+ZPDIFF)
-and #$03
-bpl skip
-;		!byte $2d							; and absolute
+		and #$03
+		bpl skip
+;		!byte $2d		and #$ab00 - changed because at #$03 target value moves 2 bytes
 ; $72
 bassoff:
-		lxa #$00							; ILLEGAL opcode clears A, X
+		lxa #$00						; ILLEGAL opcode clears A, X
 skip:
 		bcs bassdone
-		lax <(script+1+ZPDIFF),y			; ILLEGAL opcode A, X = address
+		lax <(script+1+ZPDIFF),y		; ILLEGAL opcode A, X = address
 		ldx <(script+ZPDIFF),y
 		sta $00,x
 		lda clock
-		asr #$0e							; ILLEGAL opcode A = (A & imm) /2
-		tax
-		sbx #$34		; **********		; ILLEGAL opcode X = (A & X) - imm
-		stx vmptr+1
+		asr #$0e						; ILLEGAL opcode A = (A & imm) /2
+		tax								;   gets random value 0-$e -> 0-7
+		sbx #$34						; ILLEGAL opcode X = (A & X) - imm
+		stx vmptr+1						;   0-7 - $34 -> $cc-$d3
 		eor #$07
 ; $87
 bassdone:
-		sta <(sid_mir+ZPDIFF)+0*7+1					; SID osc1 frequency hi
+		sta <(sid_mir+ZPDIFF)+0*7+1		; SID osc1 frequency hi
 		lda clock
 		and #$0f
 		bne nomel
 		lda #$b8
-		sre mel_lfsr						; ILLEGAL opcode mem = (mem / 2) : A = A eor mem
+		sre mel_lfsr					; ILLEGAL opcode mem = (mem / 2) : A = A eor mem
 		bcc noc2
 		sta mel_lfsr
 ; $97
 noc2:	and #$07
 		tax
 		lda <(freqtbl+ZPDIFF),x
-		sta <(sid_mir+ZPDIFF)+1*7+1					; SID osc2 frequency hi
+		sta <(sid_mir+ZPDIFF)+1*7+1		; SID osc2 frequency hi
 ; $9e
 nomel:
 		ldy #$08
 ; $a0
 vicloop:
-		lax <(sid_mir+ZPDIFF)+3,y						; ILLEGAL opcode A, X = address
+		lax <(sid_mir+ZPDIFF)+3,y		; ILLEGAL opcode A, X = address
 		sta (pt_d81c+ZPDIFF),y
 		dey
 		bpl vicloop
 		tay
-		bit $00	; ****** DUMMY for $a9 stop key flag!
+; $a8
+		bit $3f		; **** DUMMY - KERNAL IRQ writes $3f here to $a9 (stop key flag)
 ; $aa
 loop:	
-		lax <(sid_mir+ZPDIFF)-1,y							; ILLEGAL opcode A, X = address
+		lax <(sid_mir+ZPDIFF)-1,y		; ILLEGAL opcode A, X = address
 		sta (pt_d9ff+ZPDIFF),y
 		dey
 		bne loop
 		jmp KERNAL_IRQ
 ; $b4 init
-init:	nop
+init:	nop								; jump in from bank 15
 		nop
 		nop
-		lda #$40
+		lda #$40						; VIC memory pointers: vm=$d000, char=$c000
 		sta $d818
-		ldx #$31						; set irq vector lo
+		ldx #$31						; set irq vector to $0031
 		stx $0300
-		ldx #$00						; Background color = X
+		ldx #$00						; Background color = black
 		stx $d821
 		stx $0301						; set irq vector hi = $00
 		jmp start+ZPDIFF				; start code
@@ -194,11 +193,12 @@ start:	lda #$50						; VIC ECM, 24 lines
 ; $d2
 mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
 mod_op1:ldy #$c3
-mod_op2:ora $da1c						; SID
+mod_op2:ora $da1c						; read SID envelope 3
 		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
 		ldy #$30						; video matrix at $d000, font at $c000
-		sty $d7ff	; ***** DUMMY		; set VIC reg memory pointers
+; $df
+		sty $ffff	; ***** DUMMY - KERNAL IRQ key-sub writes $ffff here in $e0,$e1
 		adc (vmptr),y
 		inc vmptr
 		adc (vmptr),y

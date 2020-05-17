@@ -7,7 +7,7 @@
 ; ***************************************** CONSTANTS *********************************************
 SYSTEMBANK				= 15		; systembank
 CODEBANK				= 0			; codebank 0-9 for basic loader
-RASTERLINE				= $32
+RASTERLINE				= $00
 ; ************************************** P500 REGISTER ********************************************
 VR_MODEY				= $11
 VR_RASTER				= $12
