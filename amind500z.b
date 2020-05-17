@@ -7,7 +7,7 @@
 ; ***************************************** CONSTANTS *********************************************
 SYSTEMBANK				= 15		; systembank
 CODEBANK				= 0			; codebank 0-9 for basic loader
-RASTERLINE				= $00
+RASTERLINE				= $fe
 ; ************************************** P500 REGISTER ********************************************
 VR_MODEY				= $11
 VR_RASTER				= $12
@@ -19,30 +19,37 @@ VR_BGRCOL				= $21
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
 !addr HW_IRQ			= $fffe		; Hardware interrupt vector
-!addr Screen			= $0c00		; screen memory
-!addr VICbase			= $d800		; VIC
-!addr SIDbase			= $da00		; SID
-!addr CIAbase			= $dc00		; CIA
-!addr TPI1base			= $de00		; TPI1
-!addr TPI2base			= $df00		; TPI2
-!addr temp				= $0200
+!addr HW_RESET			= $fffc		; hardware reset vector
+!addr temp				= $0300		; 2 temp bytes
+!addr ExitCode			= $0400		; exit routine
+!addr ScreenRam			= $0c00		; screen RAM in bank 0
+!addr ColorRam			= $d400		; color RAM address
 ; ***************************************** ZERO PAGE *********************************************
 !zone zeropage
-!addr clock				= $4a
-!addr mel_lfsr			= $4b
-!addr clock_hi			= $57
+!addr clock				= $46
+!addr mel_lfsr			= $47
+!addr clock_hi			= $53
 ; *************************************** BASIC LOADER ********************************************
-!zone basic
+!zone basic	
 *= $0003
 		!byte $29, $00
-		!byte $0a, $00, $81, $49, $b2, $34, $33, $a4, $35, $30, $3a		; fori=xxtoyy:
-		!byte $dc, $30+CODEBANK, $3a, $41, $b2, $c2, $28, $49, $29, $3a	; bank1:a=peek(i):
+VIC:	!byte $00, $d8, $81, $49, $b2, $35, $33, $a4, $36, $30, $3a		; fori=53to60:
+		!byte $dc, $30+CODEBANK, $3a, $41, $b2, $c2, $28, $49, $29, $3a	; bank0:a=peek(i):
 		!byte $dc, $31, $35, $3a, $97, $49, $2c, $41, $3a				; bank15:pokei,a:
-temp2:	!byte $82, $3a, $9e, $34, $33, $00, $00, $00					; next:sysxx
-	; 10 fori=43to50:bank1:a=peek(i):bank15:pokei,a:next:sys43
-; *************************************** ZONE BANKINIT *******************************************
-!zone bankinit
-; $2b basic loader starts here in bank 15 with SYS 43
+		!byte $82, $3a, $9e, $35, $33, $00, $00, $00					; next:sys53
+	; 10 fori=53to60:bank0:a=peek(i):bank15:pokei,a:next:sys53
+; ********************************** 10B ZP HOLE - IO POINTER *************************************
+!zone iopointer	; This area is in bank 15 not available! - basic needs it for RAM pointers !!!
+*= $002b				; I/O pointer table - here is room for 5 pointers
+sid_ptr:	!word $da00-1		; SID - 1 for loop
+vic_ptr:	!word $d800+$1c		; VIC + $1c	for vicloop
+CIA:		!word $dc00			; CIA
+TPI1:		!word $de00			; TPI1
+TPI2:		!word $df00			; TPI2
+; *************************************** ZERO INITBANK *******************************************
+!zone initbank
+*= $0035
+; $35 basic loader starts here in bank 15 with SYS 43
 		sei
 		lda #CODEBANK
 		sta CodeBank
@@ -50,15 +57,9 @@ temp2:	!byte $82, $3a, $9e, $34, $33, $00, $00, $00					; next:sysxx
 		jmp init
 ; ***************************************** ZONE DATA *********************************************
 !zone data
-; $33 hardware pointers
-VIC:	!word VICbase
-sid_ptr:!word SIDbase-1
-CIA:	!word CIAbase
-TPI1:	!word TPI1base
-TPI2:	!word TPI2base
-vic_ptr:!word VICbase+$1c
-vm_ptr:	!word Screen
-; $41 SID register mirror $d400-$d418
+; $3d hardware pointers
+!addr vm_ptr 	= TPI1			; use TPI address after init as universal pointer
+; $3d SID register mirror $d400-$d418
 sid_mir:!byte $00, $00, $00, $19, $41,$1c, $d0	; osc 1
 ;		!byte $00, $dc, $00, $00, $11 overlapped VIC bgr-color mirror reg $20-$24 / sid_mir+3 + 4
 		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
@@ -92,7 +93,7 @@ noc1:	lda #$61
 		cpx #$3f
 		beq highpass
 		bcc noend
-		brk
+		jmp ExitCode
 ; $8c
 highpass:
 		ldy #$6d
@@ -171,36 +172,43 @@ loop:
 		bne loop
 		rts
 ; ***************************************** ZONE MAIN *********************************************
-; $f1 main routine
+; $f3 main routine
 main:	ldy #$06
 		lda (CIA),y 					; grab CIA timer lo as random value
-; $f5
-mod_op1:ldy #$c3
 ; $f7
+mod_op1:ldy #$c3
+; $f9
 mod_op2:ora temp
-		sta temp
-;		pha
+		jmp main2
+; ***************************************** STACK HOLE ********************************************
+; $0100-$01ff
+; ***************************************** ZONE MAIN2 ********************************************
+; $0200 main routine
+*= $0200
+main2:	pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
-;		ldy #$30						; video matrix at $0c00, font at $0000
-		ldx #$00
-		lda (vm_ptr,x)
-;		sta temp+1
+		tax								; remember in x
+		lda CODEBANK					; switch to indirect bank 0
+		sta IndirectBank
+		ldy #$30						; video matrix at $0c00, font at $0000
+		lda (vm_ptr),y
+		sta temp+1
 		inc vm_ptr
-;		lda (vm_ptr),y
-;		sta temp+2
-;		lda temp
-		adc temp
-;		adc temp+2
-;		adc (vm_ptr),y
-;		inc vm_ptr
-;		adc (vm_ptr),y
+		lda (vm_ptr),y
+		sta temp+2
+		txa								; restore from x
+		adc temp+1
+		adc temp+2
 		ror
 		ora clock_hi
-;		ldy #$58
+		ldy #$58
 		ora <(mod_op1)
-		sta (vm_ptr,x)
-		ldy #$1c+1
-		lda (sid_ptr),y
+		sta (vm_ptr),y
+		lda SYSTEMBANK					; switch back to systembank for cia, sid
+		sta IndirectBank
+		ldy #$1c+1						; read SID envelope 3
+;		lda (sid_ptr),y
+;		lda clock_hi
 		sta temp
 		jmp main
 ; **************************************** IRQ HANDLER ********************************************
@@ -211,6 +219,10 @@ IRQ_Handler:
 		pha
 		tya
 		pha
+		lda IndirectBank
+		pha
+		lda #SYSTEMBANK
+		sta IndirectBank
 		ldy #VR_IRQ
 		lda (VIC),y						; load VIC interrupt reg and mask bit 1
 		and #$01
@@ -225,6 +237,8 @@ IRQ_Handler:
 		ldy #VR_IRQ
 		sta (VIC),y						; clear VIC raster interrupt
 endirq:	pla
+		sta IndirectBank
+		pla
 		tay
 		pla
 		tax
@@ -242,7 +256,7 @@ init:	ldx #$ff						; init new stack in codebank
 		lda #SYSTEMBANK
 		sta IndirectBank				; set bank indirect reg to bank 15
 		ldy #$06
-		lda (TPI1),y					; load TRI1 control register
+		lda (TPI1),y					; load TPI1 control register
 		and #$0f						; clear CA, CB control bits#4-7 vic bank 0/15 select 
 		ora #$a0						; set bit#5,4=10 CA=low -> Video matrix in bank 0
 		sta (TPI1),y					; set bit#7,6=10 CB=high -> Characterset in bank 0 
@@ -253,16 +267,34 @@ init:	ldx #$ff						; init new stack in codebank
 		lda #$30
 		ldy #VR_MEMPT					; VIC reg $18 memory pointers
 		sta (VIC),y						; set VM13-10=$3 screen at $0c00, CB13-11=0 char at $0000
-;		lda #$7f						; bit#7=0 clears/mask out all 5 irq sources with bit#0-4 = 1
-;		ldy #$0d						; CIA interrupt control register
-;		sta (CIA),y						; disable all hardware interrupts
+		lda #$7f						; bit#7=0 clears/mask out all 5 irq sources with bit#0-4 = 1
+		ldy #$0d						; CIA interrupt control register
+		sta (CIA),y						; disable all hardware interrupts
 		lda #$00
 		ldy #$05
 		sta (TPI1),y					; set TPI1 reg $5 interrupt mask reg = $00 - disable all irq
-		ldy #VR_BGRCOL
-		sta (VIC),y						; Background color black
-;		jsr KERNAL_CLR					; Kernal clear screen routine
-
+; init color RAM with BLACK		
+		ldx #>ColorRam
+		stx vm_ptr+1					; set pointer to Color RAM
+		ldx #$04						; a already $00 = black, clear 4 pages
+		tay								; clear y
+colorlp:sta (vm_ptr),y
+		iny
+		bne colorlp						; next byte
+		inc vm_ptr+1
+		dex
+		bne colorlp						; next pages
+; copy exitcode
+		lda #>ExitCode
+		sta vm_ptr+1					; set pointer to ExitCode
+		ldy #end-exit
+exitlp:	lda exit,y						; copy exitcode
+		sta ExitCode,y
+		sta (vm_ptr),y
+		dey
+		bpl exitlp
+		lda #>ScreenRam
+		sta vm_ptr+1					; init vm_ptr with $0c00 = screen RAM
 ; P500 Hardware interrupt vector setup, enable VIC raster IRQ
 		lda #$01
 		ldy #VR_EIRQ
@@ -275,3 +307,9 @@ init:	ldx #$ff						; init new stack in codebank
 		sta (VIC),y						; VIC set raster reg
 		cli
 		jmp main						; start main code
+exit:	sei
+		lda #SYSTEMBANK
+		sta CodeBank
+		nop
+		jmp (HW_RESET)
+end:
