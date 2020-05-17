@@ -94,7 +94,7 @@ noc1	lda #$61
 		cpx #$3f
 		beq highpass
 		bcc noend
-		lsr $d811
+;		lsr $d811
 		jmp (HW_RESET)
 ; $4b
 highpass:
@@ -125,10 +125,13 @@ nointro:
 		tax
 		lda <(basstbl+ZPDIFF),x
 		sta <(sid_mir+ZPDIFF)
-		!byte $2d							; and absolute
+and #$03
+bpl skip
+;		!byte $2d							; and absolute
 ; $72
 bassoff:
 		lxa #$00							; ILLEGAL opcode clears A, X
+skip:
 		bcs bassdone
 		lax <(script+1+ZPDIFF),y			; ILLEGAL opcode A, X = address
 		ldx <(script+ZPDIFF),y
