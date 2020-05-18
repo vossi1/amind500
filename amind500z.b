@@ -64,7 +64,7 @@ sid_mir:!byte $00, $00, $00, $19, $41,$1c, $d0	; osc 1
 ;		!byte $00, $dc, $00, $00, $11 overlapped VIC bgr-color mirror reg $20-$24 / sid_mir+3 + 4
 		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
 		!byte $0b, $10, $33, $0e, $61, $90, $f5 ; osc 3
-		!byte $07, $00, $ff, $1f 				; SID filter regs
+		!byte $07, $00, $fc, $1f 				; SID filter regs
 ; $4a script: 1.byte = ZP-address, 2.byte = value
 script:	!byte <(freqtbl+$08), $1f
 		!byte <(sid_mir+$0a), $41
@@ -173,8 +173,8 @@ loop:
 		rts
 ; ***************************************** ZONE MAIN *********************************************
 ; $f3 main routine
-main:	ldy #$06
-		lda (CIA),y 					; grab CIA timer lo as random value
+main:	lda clock
+
 ; $f7
 mod_op1:ldy #$c3
 ; $f9
@@ -187,6 +187,7 @@ mod_op2:ora temp
 *= $0200
 main2:	pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
+		pha
 		tax								; remember in x
 		lda CODEBANK					; switch to indirect bank 0
 		sta IndirectBank
@@ -198,16 +199,23 @@ main2:	pha
 		sta temp+2
 		txa								; restore from x
 		adc temp+1
+		pha
 		adc temp+2
 		ror
+		pha
 		ora clock_hi
+		pha
 		ldy #$58
 		ora <(mod_op1)
 		sta (vm_ptr),y
+		pha
 		lda SYSTEMBANK					; switch back to systembank for cia, sid
 		sta IndirectBank
-		ldy #$1c+1						; read SID envelope 3
-		lda (sid_ptr),y
+;		ldy #$1c+1						; read SID envelope 3
+;		lda (sid_ptr),y
+		tsx
+		txa
+		pha
 		sta temp
 		jmp main
 ; **************************************** IRQ HANDLER ********************************************
