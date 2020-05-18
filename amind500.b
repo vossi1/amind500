@@ -7,7 +7,7 @@
 ; ***************************************** CONSTANTS *********************************************
 SYSTEMBANK				= $0f		; systembank
 
-ZPDIFF					= -$0100
+ZPDIFF					= -code+3
 ; ***************************************** ADDRESSES *********************************************
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
@@ -45,7 +45,7 @@ vmptr					= $cb
 		stx IndirectBank				; indirect bank = 15
 
 		ldy #$ff						; copies code to bank 15 ZP from $03-$ff
-codecpy:lda $0102,y
+codecpy:lda code-1,y
 		sta (zp_ptr),y
 		dey
 		bne codecpy
@@ -61,7 +61,8 @@ switch: 								; X already = SYSTEMBANK
 
 ; ***************************************** ZONE CODE *********************************************
 !zone code
-*= $0103
+*= $0203
+code:
 pt_d9ff:!byte $ff, $d9							; SID base = $da00
 pt_d81c:!byte $1c, $d8							; VIC reg $1c
 		!byte $32, $32, $35;, $00, $00, $00
@@ -93,7 +94,7 @@ noc1	lda #$61
 		beq highpass
 		bcc noend
 ;		lsr $d811						; not needed - reset does not work!
-		jmp (HW_RESET)
+		jmp (HW_RESET)					; ^ 3 bytes saved
 ; $4b
 highpass:
 		ldy #$6d
@@ -123,7 +124,7 @@ nointro:
 		tax
 		lda <(basstbl+ZPDIFF),x
 		sta <(sid_mir+ZPDIFF)
-		and #$03
+		and #$03				; needed the 3 extra bytes saved from above 
 		bpl skip
 ;		!byte $2d		and #$ab00 - changed because at #$03 target value moves 2 bytes
 ; $72

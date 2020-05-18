@@ -207,8 +207,7 @@ main2:	pha
 		lda SYSTEMBANK					; switch back to systembank for cia, sid
 		sta IndirectBank
 		ldy #$1c+1						; read SID envelope 3
-;		lda (sid_ptr),y
-;		lda clock_hi
+		lda (sid_ptr),y
 		sta temp
 		jmp main
 ; **************************************** IRQ HANDLER ********************************************
