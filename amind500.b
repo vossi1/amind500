@@ -6,13 +6,18 @@
 !to "amind500.prg", cbm
 ; ***************************************** CONSTANTS *********************************************
 SYSTEMBANK				= $0f		; systembank
-
 ZPDIFF					= -code+3
+FILTER					= 1 		; 7 = original / filter all 3 voices (only 8580 SID)
+									;^1 = filters only bass for 6581 SID (P500 / CBM2)
 ; ***************************************** ADDRESSES *********************************************
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
-!addr KERNAL_IRQ		= $fbf8
-!addr HW_RESET			= $fffc
+!addr IRQ_vector		= $0300		; IRQ_vector
+!addr VIC				= $d800		; VIC base address
+!addr SID				= $da00		; SID base address
+!addr CIA				= $dc00		; CIA base address
+!addr KERNAL_IRQ		= $fbf8		; kernal irq jump in from $0300 vector
+!addr HW_RESET			= $fffc		; hardware reset vector
 ; *************************************** BASIC LOADER ********************************************
 !zone basic
 *= $0003
@@ -63,8 +68,8 @@ switch: 								; X already = SYSTEMBANK
 !zone code
 *= $0203
 code:
-pt_d9ff:!byte $ff, $d9							; SID base = $da00
-pt_d81c:!byte $1c, $d8							; VIC reg $1c
+pt_d9ff:!byte <(SID-1), >(SID-1)				; SID base -1
+pt_d81c:!byte <VIC+$1c, >VIC					; VIC reg $1c
 		!byte $32, $32, $35;, $00, $00, $00
 ;
 ; $0a SID register mirror $d400-$d418
@@ -72,9 +77,9 @@ sid_mir:!byte $00, $00, $00, $19, $41, $1c, $d0	; osc 1
 ;		!byte $00, $dc, $00, $00, $11			  overlapped VIC BGR color mirror $d020-$d024
 		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
 		!byte $0b, $10, $33, $0e, $61, $90, $f5 ; osc 3
-		!byte $07, $00; $ff, $1f 				; SID common regs - last two overlapped with script
+		!byte $07, $00, $f8+FILTER, $1f 		; SID common regs - addded filter selection
 ; script: 1.byte = ZP-address, 2.byte = value
-script:	!byte $ff, $1f
+script:	!byte $ff, $18							; dummy write to unused address $ff
 		!byte <(sid_mir+ZPDIFF)+$0a, $41
 		!byte <(mod_op1+ZPDIFF), 	 $24
 		!byte <(sid_mir+ZPDIFF)+$0b, $25
@@ -82,7 +87,7 @@ script:	!byte $ff, $1f
 		!byte <(sid_mir+ZPDIFF)+$0b, $61
 		!byte <(mod_op1+ZPDIFF), 	 $29
 		!byte <(sid_mir+ZPDIFF)+$11, $0f
-; $31 interrupt routine
+; $33 interrupt routine
 irq:	inc clock						; increase counter lowyte 2 bytes
 		inc clock
 		bne noc1
@@ -94,7 +99,8 @@ noc1	lda #$61
 		beq highpass
 		bcc noend
 ;		lsr $d811						; not needed - reset does not work!
-		jmp (HW_RESET)					; ^ 3 bytes saved
+;		jmp (HW_RESET)					; ^ 3 bytes saved
+		brk					; saves 2 bytes for splitting script first 2 bytes from sid-mirror
 ; $4b
 highpass:
 		ldy #$6d
@@ -176,25 +182,25 @@ loop:
 		bne loop
 		jmp KERNAL_IRQ
 ; $b4 init
-init:	nop								; jump in from bank 15
+init:	nop								; jump in from bank 0
 		nop
 		nop
 		lda #$40						; VIC memory pointers: vm=$d000, char=$c000
-		sta $d818
-		ldx #$31						; set irq vector to $0031
-		stx $0300
+		sta VIC+$18
+		ldx #<(irq+ZPDIFF)				; set irq vector
+		stx IRQ_vector
 		ldx #$00						; Background color = black
-		stx $d821
-		stx $0301						; set irq vector hi = $00
+		stx VIC+$21
+		stx IRQ_vector+1				; set irq vector hi = $00
 		jmp start+ZPDIFF				; start code
 ; $cc main routine
 start:	lda #$50						; VIC ECM, 24 lines
-		sta $d811						
+		sta VIC+$11						
 		cli								; enable interrupts
 ; $d2
-mainlp:	lda $dc06 						; grab CIA timer2 lo as random value
+mainlp:	lda CIA+$06						; grab CIA timer2 lo as random value
 mod_op1:ldy #$c3
-mod_op2:ora $da1c						; read SID envelope 3
+mod_op2:ora SID+$1c						; read SID envelope 3
 		pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
 		ldy #$30						; video matrix at $d000, font at $c000

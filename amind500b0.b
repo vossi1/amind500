@@ -1,13 +1,15 @@
 ; "A Mind Was Born" 
 ; disassembled by DASM6502b v.3.1 by Marat Fayzullin
 ; modified by Vossi 02/2019
-; comments by Vossi 05/2020
+; ported to P500, comments by Vossi 05/2020
 !cpu 6510
-!to "amind500z.prg", cbm
+!to "amind500b0.prg", cbm
 ; ***************************************** CONSTANTS *********************************************
 SYSTEMBANK				= 15		; systembank
 CODEBANK				= 0			; codebank 0-9 for basic loader
 RASTERLINE				= $fe
+FILTER					= 1 		; 7 = original / filter all 3 voices (only 8580 SID)
+									;^1 = filters only bass for 6581 SID (P500 / CBM2)
 ; ************************************** P500 REGISTER ********************************************
 VR_MODEY				= $11
 VR_RASTER				= $12
@@ -19,8 +21,8 @@ VR_BGRCOL				= $21
 !addr CodeBank			= $00		; code bank register
 !addr IndirectBank		= $01		; indirect bank register
 !addr HW_IRQ			= $fffe		; Hardware interrupt vector
-!addr HW_RESET			= $fffc		; hardware reset vector
-!addr temp				= $0300		; 2 temp bytes
+!addr HW_RESET			= $fffc		; Hardware reset vector
+!addr temp				= $0300		; some temp bytes
 !addr ExitCode			= $0400		; exit routine
 !addr ScreenRam			= $0c00		; screen RAM in bank 0
 !addr ColorRam			= $d400		; color RAM address
@@ -43,9 +45,9 @@ VIC:	!byte $00, $d8, $81, $49, $b2, $35, $33, $a4, $36, $30, $3a		; fori=53to60:
 *= $002b				; I/O pointer table - here is room for 5 pointers
 sid_ptr:	!word $da00-1		; SID - 1 for loop
 vic_ptr:	!word $d800+$1c		; VIC + $1c	for vicloop
-CIA:		!word $dc00			; CIA
-TPI1:		!word $de00			; TPI1
-TPI2:		!word $df00			; TPI2
+CIA:		!word $dc00			; CIA base address
+TPI1:		!word $de00			; TPI1 base address
+TPI2:		!word $df00			; TPI2 base address
 ; *************************************** ZERO INITBANK *******************************************
 !zone initbank
 *= $0035
@@ -64,9 +66,9 @@ sid_mir:!byte $00, $00, $00, $19, $41,$1c, $d0	; osc 1
 ;		!byte $00, $dc, $00, $00, $11 overlapped VIC bgr-color mirror reg $20-$24 / sid_mir+3 + 4
 		!byte $00, $dc, $00, $00, $11, $d0, $e0 ; osc 2
 		!byte $0b, $10, $33, $0e, $61, $90, $f5 ; osc 3
-		!byte $07, $00, $fc, $1f 				; SID filter regs
+		!byte $07, $00, $f8+FILTER, $1f 		; SID filter regs - addded filter selection
 ; $4a script: 1.byte = ZP-address, 2.byte = value
-script:	!byte <(freqtbl+$08), $1f
+script:	!byte <(freqtbl+$08), $1f				; dummy write to unused address
 		!byte <(sid_mir+$0a), $41
 		!byte <(mod_op1), 	 $24
 		!byte <(sid_mir+$0b), $25
@@ -93,7 +95,7 @@ noc1:	lda #$61
 		cpx #$3f
 		beq highpass
 		bcc noend
-		jmp ExitCode
+		jmp ExitCode					; jumps to exitcode
 ; $8c
 highpass:
 		ldy #$6d
@@ -179,7 +181,7 @@ main:	lda clock
 mod_op1:ldy #$c3
 ; $f9
 mod_op2:ora temp
-		jmp main2
+		jmp main2						; main code continued behind stack
 ; ***************************************** STACK HOLE ********************************************
 ; $0100-$01ff
 ; ***************************************** ZONE MAIN2 ********************************************

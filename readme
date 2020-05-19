@@ -1,0 +1,21 @@
+A Mind Is Born
+256 bytes C64 zeropage demo from Linus Akesson Rev. 2017
+converted to P500 by vossi 05/2020
+
+assembling: acme amind500.b
+
+amind500.b
+- loaded in bank 0, copied to zp bank 15 and started there
+- char rom on P500 not movable in bank15 -> fixed charset
+- vic-area not moveable to $0000-$3fff -> used at standard $d000
+- reset after test does not work
+- irq runs with psu frequency -> demo runs slower with 50Hz in the EU
+
+amind500b0.b
+- runs in bank 0 directly
+- because of basic loader it needs additional space at $200 behind the stack
+- ^ in the P500 it's not possible to start machine code with SY in bank 0 !
+- some more instructions needed for indirect access to bank 15 I/O
+- because of no kernal-sub available it runs with own irq handler in bank 0
+- runs with vic raster-irq -> 60Hz on 6567 US machine, 50Hz on 6569 EU P500
+- problems with reading SID envelope reg $1c -> graphics not like C64 version
