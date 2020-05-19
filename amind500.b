@@ -69,7 +69,7 @@ switch: 								; X already = SYSTEMBANK
 *= $0203
 code:
 pt_d9ff:!byte <(SID-1), >(SID-1)				; SID base -1
-pt_d81c:!byte <VIC+$1c, >VIC					; VIC reg $1c
+pt_d81c:!byte <(VIC+$1c), >(VIC)				; VIC reg $1c
 		!byte $32, $32, $35;, $00, $00, $00
 ;
 ; $0a SID register mirror $d400-$d418
