@@ -18,4 +18,3 @@ amind500b0.b
 - some more instructions needed for indirect access to bank 15 I/O
 - because of no kernal-sub available it runs with own irq handler in bank 0
 - runs with vic raster-irq -> 60Hz on 6567 US machine, 50Hz on 6569 EU P500
-- problems with reading SID envelope reg $1c -> graphics not like C64 version
