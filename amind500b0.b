@@ -190,7 +190,7 @@ mod_op2:ora temp
 main2:	pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
 		tax								; remember in x
-		lda CODEBANK					; switch to indirect bank 0
+		lda #CODEBANK					; switch to indirect bank 0
 		sta IndirectBank
 		ldy #$30						; video matrix at $0c00, font at $0000
 		lda (vm_ptr),y
@@ -206,7 +206,7 @@ main2:	pha
 		ldy #$58
 		ora <(mod_op1)
 		sta (vm_ptr),y
-		lda SYSTEMBANK					; switch back to systembank for cia, sid
+		lda #SYSTEMBANK					; switch back to systembank for cia, sid
 		sta IndirectBank
 		ldy #$1c+1						; read SID envelope 3
 		lda (sid_ptr),y
