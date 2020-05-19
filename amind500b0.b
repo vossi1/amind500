@@ -175,8 +175,8 @@ loop:
 		rts
 ; ***************************************** ZONE MAIN *********************************************
 ; $f3 main routine
-main:	lda clock
-
+main:	ldy #$04
+		lda (CIA),y						; grab Timer A lo as random value
 ; $f7
 mod_op1:ldy #$c3
 ; $f9
@@ -189,7 +189,6 @@ mod_op2:ora temp
 *= $0200
 main2:	pha
 		asr #$04						; ILLEGAL opcode (A & imm) /2
-		pha
 		tax								; remember in x
 		lda CODEBANK					; switch to indirect bank 0
 		sta IndirectBank
@@ -201,23 +200,16 @@ main2:	pha
 		sta temp+2
 		txa								; restore from x
 		adc temp+1
-		pha
 		adc temp+2
 		ror
-		pha
 		ora clock_hi
-		pha
 		ldy #$58
 		ora <(mod_op1)
 		sta (vm_ptr),y
-		pha
 		lda SYSTEMBANK					; switch back to systembank for cia, sid
 		sta IndirectBank
-;		ldy #$1c+1						; read SID envelope 3
-;		lda (sid_ptr),y
-		tsx
-		txa
-		pha
+		ldy #$1c+1						; read SID envelope 3
+		lda (sid_ptr),y
 		sta temp
 		jmp main
 ; **************************************** IRQ HANDLER ********************************************
@@ -279,6 +271,9 @@ init:	ldx #$ff						; init new stack in codebank
 		lda #$7f						; bit#7=0 clears/mask out all 5 irq sources with bit#0-4 = 1
 		ldy #$0d						; CIA interrupt control register
 		sta (CIA),y						; disable all hardware interrupts
+		ldy #$0e
+		lda #$01
+		sta (CIA),y						; start timer A with phi2 speed, continous mode
 		lda #$00
 		ldy #$05
 		sta (TPI1),y					; set TPI1 reg $5 interrupt mask reg = $00 - disable all irq

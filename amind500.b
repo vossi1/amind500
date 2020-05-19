@@ -30,6 +30,7 @@ FILTER					= 1 		; 7 = original / filter all 3 voices (only 8580 SID)
 !zone zeropage
 *= $0040
 zp_ptr:	!word $0002						; +1 = $0003 code start in bank 15
+CIA_ptr:!word CIA
 
 clock					= $13
 mel_lfsr				= $14
@@ -54,6 +55,9 @@ codecpy:lda code-1,y
 		sta (zp_ptr),y
 		dey
 		bne codecpy
+		ldy #$0e
+		lda #$01
+		sta (CIA_ptr),y						; start timer A with phi2 speed, continous mode
 
 		jmp switch
 ; switch routine		
@@ -198,7 +202,7 @@ start:	lda #$50						; VIC ECM, 24 lines
 		sta VIC+$11						
 		cli								; enable interrupts
 ; $d2
-mainlp:	lda CIA+$06						; grab CIA timer2 lo as random value
+mainlp:	lda CIA+$04						; grab CIA timer1 lo as random value
 mod_op1:ldy #$c3
 mod_op2:ora SID+$1c						; read SID envelope 3
 		pha
