@@ -272,7 +272,7 @@ init:	ldx #$ff						; init new stack in codebank
 		ldy #$0d						; CIA interrupt control register
 		sta (CIA),y						; disable all hardware interrupts
 		ldy #$0e
-		lda #$01
+		lda #$81
 		sta (CIA),y						; start timer A with phi2 speed, continous mode
 		lda #$00
 		ldy #$05

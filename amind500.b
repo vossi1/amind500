@@ -56,7 +56,7 @@ codecpy:lda code-1,y
 		dey
 		bne codecpy
 		ldy #$0e
-		lda #$01
+		lda #$81
 		sta (CIA_ptr),y						; start timer A with phi2 speed, continous mode
 
 		jmp switch
